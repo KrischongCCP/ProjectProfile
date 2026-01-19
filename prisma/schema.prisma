@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id                   String       @id @default(uuid())
+  name                 String
+  description          String?      @map("description")
+  status               String       @default("ACTIVE")
+  dealSize             Decimal      @map("deal_size")
+  blendedRate          Decimal      @map("blended_rate")
+  totalHours           Decimal      @map("total_hours") @default(0)
+
+  // Dates
+  startDate            DateTime?    @map("start_date")
+  endDate              DateTime?    @map("end_date")
+  periodMonths         Int?         @map("period_months")
+
+  // Technology Stack (stored as JSON string)
+  techStack            String?      @map("tech_stack")
+
+  // Enduser (Customer from external system)
+  enduserId            String?      @map("enduser_id")
+  enduserName          String?      @map("enduser_name")
+  enduserContactPerson String?      @map("enduser_contact_person")
+
+  // Partner (from external system)
+  partnerId            String?      @map("partner_id")
+  partnerName          String?      @map("partner_name")
+  partnerSales         String?      @map("partner_sales")
+
+  // Documents
+  googleDriveUrl       String?      @map("google_drive_url")
+  documents            String?      @map("documents") // JSON array of {name, url, uploadedAt}
+
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  assignments          Assignment[]
+
+  @@map("projects")
+}
+
+model Role {
+  id                            String       @id @default(uuid())
+  roleName                      String       @unique @map("role_name")
+  defaultAllocationPercentage   Decimal      @map("default_allocation_percentage")
+  createdAt                     DateTime     @default(now()) @map("created_at")
+  staff                         Staff[]
+  assignments                   Assignment[]
+
+  @@map("roles")
+}
+
+model Staff {
+  id          String       @id @default(uuid())
+  name        String
+  title       String?      @map("title")
+  roleId      String       @map("role_id")
+  hourlyCost  Decimal      @map("hourly_cost")
+  hoursQuota  Decimal      @map("hours_quota") @default(40)
+
+  // Profile Details
+  email       String?      @map("email")
+  phone       String?      @map("phone")
+  skills      String?      @map("skills")           // JSON array of skills
+  education   String?      @map("education")        // JSON array of {degree, institution, year}
+  experience  String?      @map("experience")       // JSON array of {company, role, duration, description}
+  certifications String?   @map("certifications")   // JSON array of certifications
+  bio         String?      @map("bio")              // ~100 words bio summary
+  executiveSummary String? @map("executive_summary") // ~200 words executive summary
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+  role        Role         @relation(fields: [roleId], references: [id])
+  assignments Assignment[]
+
+  @@map("staff")
+}
+
+model Assignment {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  staffId        String   @map("staff_id")
+  roleId         String   @map("role_id")
+  allocatedHours Decimal  @map("allocated_hours") @default(0)
+  loggedHours    Decimal  @map("logged_hours") @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staff          Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  role           Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([projectId, staffId, roleId])
+  @@map("assignments")
+}
